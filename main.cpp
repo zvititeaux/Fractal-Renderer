@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 
-const int WIDTH = 800; // Set window width
-const int HEIGHT = 600; // Set window height 
+const int WIDTH = 2560;
+const int HEIGHT = 1440;
 
 int mandelbrot(double x0, double y0, int max_iteration) {
 	double x = 0.0;
@@ -27,11 +27,13 @@ int main() {
 			double x0 = (double)Px / WIDTH * (0.47 + 2.00) - 2.00;
 			double y0 = (double)Py / HEIGHT * (1.12 + 1.12) - 1.12;
 
-			int value = mandelbrot(x0, y0, 1000);
+			int value = mandelbrot(x0, y0, 6000);
 
 			// This part colors the pixel. Adjusts this for your needs:
-			sf::Color color(255 - value % 255, 255 - value % 255, 255 - value % 255);
-			if (value == 1000) {
+
+			
+			sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
+			if (value == 6000) {
 				color = sf::Color::Black; 
 			}
 			image.setPixel(Px, Py, color);
