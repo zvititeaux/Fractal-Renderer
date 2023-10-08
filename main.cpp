@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 
-const int WIDTH = 2560;
-const int HEIGHT = 1440;
+const int WIDTH = 3840;
+const int HEIGHT = 2160;
 
 class Mandelbrot {
 public:
