@@ -1,4 +1,6 @@
 #include <SFML/Graphics.hpp>
+#include <thread>
+#include <vector>
 
 const int WIDTH = 3840;
 const int HEIGHT = 2160;
@@ -9,10 +11,14 @@ public:
 		double x = 0.0;
 		double y = 0.0;
 		int iteration = 0;
-		while (x * x + y * y <= 2 * 2 && iteration < max_iteration) {
-			double xtemp = x * x - y * y + x0;
+		double xx = x * x; // Cached squared value
+		double yy = y * y; // Cached squared value
+		
+		while (xx + yy <= 4.0 && iteration < max_iteration) {
 			y = 2 * x * y + y0;
-			x = xtemp;
+			x = xx - yy + x0;
+			xx = x * x;
+			yy = y * y;
 			iteration++;
 		}
 		return iteration;
@@ -88,12 +94,16 @@ private:
 	}
 
 	void renderMandelbrot() {
+		double scaleX = (viewport.getXMax() - viewport.getXMin()) / WIDTH;
+		double scaleY = (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
+
 		image.create(WIDTH, HEIGHT);
+
 		for (int y = 0; y < HEIGHT; y++) {
 			for (int x = 0; x < WIDTH; x++) {
-				double x0 = viewport.getXMin() + x * (viewport.getXMax() - viewport.getXMin()) / WIDTH;
-				double y0 = viewport.getYMin() + y * (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
-
+				double x0 = viewport.getXMin() + x * scaleX;
+				double y0 = viewport.getYMin() + y * scaleY;
+				
 				int value = Mandelbrot::calculate(x0, y0, 1000);
 				sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
 				if (value == 1000) color = sf::Color::Black;
