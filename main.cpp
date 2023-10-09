@@ -2,8 +2,8 @@
 #include <thread>
 #include <vector>
 
-const int WIDTH = 3840;
-const int HEIGHT = 2160;
+const int WIDTH = 800;
+const int HEIGHT = 600;
 
 class Mandelbrot {
 public:
@@ -13,7 +13,7 @@ public:
 		int iteration = 0;
 		double xx = x * x; // Cached squared value
 		double yy = y * y; // Cached squared value
-		
+
 		while (xx + yy <= 4.0 && iteration < max_iteration) {
 			y = 2 * x * y + y0;
 			x = xx - yy + x0;
@@ -52,15 +52,20 @@ public:
 };
 
 class App {
-private: 
+private:
 	sf::RenderWindow window;
 	Viewport viewport;
 	sf::Image image;
 	sf::Texture texture;
 	sf::Sprite sprite;
+	bool needsUpdate = true;
 
 public:
-	App() : window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set") {}
+	App() : window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set"), needsUpdate(true) {
+		image.create(WIDTH, HEIGHT, sf::Color::Black);
+		texture.create(WIDTH, HEIGHT);
+		sprite.setTexture(texture);
+	}
 
 	void run() {
 		while (window.isOpen()) {
@@ -68,8 +73,11 @@ public:
 
 			renderMandelbrot();
 			
-			texture.loadFromImage(image);
-			sprite.setTexture(texture, true);
+			if (needsUpdate) {
+				texture.update(image);
+				needsUpdate = false;
+			}
+			
 			window.clear();
 			window.draw(sprite);
 			window.display();
@@ -78,44 +86,47 @@ public:
 
 private:
 	void handleEvents() {
-	sf::Event event;
-	while(window.pollEvent(event)) {
-		if (event.type == sf::Event::Closed) {
-			window.close();
-		}
-		else if (event.type == sf::Event::MouseWheelScrolled) {
-			if (event.mouseWheelScroll.delta > 0) {
-				viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 0.8);
-			} else {
-				viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 1.25);
+		sf::Event event;
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) {
+				window.close();
+			}
+			else if (event.type == sf::Event::MouseWheelScrolled) {
+				if (event.mouseWheelScroll.delta > 0) {
+					viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 0.8);
 				}
+				else {
+					viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 1.25);
+				}
+				needsUpdate = true;
 			}
 		}
 	}
 
 	void renderMandelbrot() {
+		if (!needsUpdate) return;
 		double scaleX = (viewport.getXMax() - viewport.getXMin()) / WIDTH;
 		double scaleY = (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
-
-		image.create(WIDTH, HEIGHT);
 
 		for (int y = 0; y < HEIGHT; y++) {
 			for (int x = 0; x < WIDTH; x++) {
 				double x0 = viewport.getXMin() + x * scaleX;
 				double y0 = viewport.getYMin() + y * scaleY;
-				
+
 				int value = Mandelbrot::calculate(x0, y0, 1000);
 				sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
 				if (value == 1000) color = sf::Color::Black;
 				image.setPixel(x, y, color);
 			}
 		}
+		texture.update(image);
+		needsUpdate = false;
 	}
 };
 
 int main() {
 	App app;
 	app.run();
-	return 0; 
+	return 0;
 }
 
