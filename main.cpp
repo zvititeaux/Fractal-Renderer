@@ -2,8 +2,8 @@
 #include <thread>
 #include <vector>
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+const int WIDTH = 2560;
+const int HEIGHT = 1440;
 
 class Mandelbrot {
 public:
@@ -105,6 +105,7 @@ private:
 		double scaleX = (viewport.getXMax() - viewport.getXMin()) / WIDTH;
 		double scaleY = (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
 
+#pragma omp parallel for 
 		for (int y = 0; y < HEIGHT; y++) {
 			for (int x = 0; x < WIDTH; x++) {
 				double x0 = viewport.getXMin() + x * scaleX;
