@@ -92,12 +92,9 @@ private:
 				window.close();
 			}
 			else if (event.type == sf::Event::MouseWheelScrolled) {
-				if (event.mouseWheelScroll.delta > 0) {
-					viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 0.8);
-				}
-				else {
-					viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, 1.25);
-				}
+				double zoomFactor = (event.mouseWheelScroll.delta > 0) ? 0.8 : 1.25;
+				// Update the Mandelbrot calculations with new zoom factor and set needsUpdate to true
+				viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, zoomFactor);
 				needsUpdate = true;
 			}
 		}
