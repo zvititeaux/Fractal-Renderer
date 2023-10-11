@@ -1,5 +1,4 @@
 #include <SFML/Graphics.hpp>
-#include <thread>
 #include <vector>
 
 const int WIDTH = 2560;
@@ -39,10 +38,11 @@ public:
 		double xRange = (xMax - xMin) * zoomFactor;
 		double yRange = (yMax - yMin) * zoomFactor;
 
-		xMin = x - xRange / 2.0;
-		xMax = x + xRange / 2.0;
-		yMin = y - yRange / 2.0;
-		yMax = y + yRange / 2.0;
+		xMin = x - mouseX * xRange / WIDTH;
+		xMax = xMin + xRange;
+	
+		yMin = y - mouseY * yRange / HEIGHT;
+		yMax = yMin + yRange;
 	}
 
 	double getXMin() const { return xMin; }
@@ -94,7 +94,10 @@ private:
 			else if (event.type == sf::Event::MouseWheelScrolled) {
 				double zoomFactor = (event.mouseWheelScroll.delta > 0) ? 0.8 : 1.25;
 				// Update the Mandelbrot calculations with new zoom factor and set needsUpdate to true
-				viewport.zoom(event.mouseWheelScroll.x, event.mouseWheelScroll.y, zoomFactor);
+				int mouseX = sf::Mouse::getPosition(window).x;
+				int mouseY = sf::Mouse::getPosition(window).y;
+				
+				viewport.zoom(mouseX, mouseY, zoomFactor);
 				needsUpdate = true;
 			}
 		}
@@ -102,19 +105,41 @@ private:
 
 	void renderMandelbrot() {
 		if (!needsUpdate) return;
+		
 		double scaleX = (viewport.getXMax() - viewport.getXMin()) / WIDTH;
 		double scaleY = (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
 
-#pragma omp parallel for 
-		for (int y = 0; y < HEIGHT; y++) {
-			for (int x = 0; x < WIDTH; x++) {
-				double x0 = viewport.getXMin() + x * scaleX;
-				double y0 = viewport.getYMin() + y * scaleY;
+		bool useSymmetry = (std::abs(viewport.getYMin()) == std::abs(viewport.getYMax()));
 
-				int value = Mandelbrot::calculate(x0, y0, 1000);
-				sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
-				if (value == 1000) color = sf::Color::Black;
-				image.setPixel(x, y, color);
+		if (useSymmetry) {
+#pragma omp parallel for 
+			for (int y = 0; y < HEIGHT / 2; y++) {
+				for (int x = 0; x < WIDTH; x++) {
+					double x0 = viewport.getXMin() + x * scaleX;
+					double y0 = viewport.getYMin() + y * scaleY;
+
+					int value = Mandelbrot::calculate(x0, y0, 1000);
+					sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
+					if (value == 1000) color = sf::Color::Black;
+
+					image.setPixel(x, y, color);
+					image.setPixel(x, HEIGHT - y - 1, color);
+				}
+			}
+		}
+		else {
+#pragma omp parallel for
+			for (int y = 0; y < HEIGHT; y++) {
+				for (int x = 0; x < WIDTH; x++) {
+					double x0 = viewport.getXMin() + x * scaleX;
+					double y0 = viewport.getYMin() + y * scaleY;
+
+					int value = Mandelbrot::calculate(x0, y0, 1000);
+					sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
+					if (value == 1000) color = sf::Color::Black;
+
+					image.setPixel(x, y, color);
+				}
 			}
 		}
 		texture.update(image);
