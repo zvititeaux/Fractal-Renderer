@@ -1,12 +1,14 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Shader.hpp>
 #include <vector>
+#include <iostream>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
 class Mandelbrot {
 public:
-	static int calculate(double x0, double y0, int max_iteration) {
+	/*static int calculate(double x0, double y0, int max_iteration) {
 		double x = 0.0;
 		double y = 0.0;
 		int iteration = 0;
@@ -24,7 +26,7 @@ public:
 		if (iteration == max_iteration) return max_iteration;
 
 		return iteration + 1 - log(log(sqrt(xx + yy))) / log(2.0);
-	}
+	} */
 };
 
 class Viewport {
@@ -58,40 +60,25 @@ class App {
 private:
 	sf::RenderWindow window;
 	Viewport viewport;
-	sf::Image image;
-	sf::Texture texture;
-	sf::Sprite sprite;
+	sf::Shader mandelbrotShader;
 	bool needsUpdate = true;
-
-	static const int MAX_ITERATIONS = 1000;
-	sf::Color colorLookupTable[MAX_ITERATIONS];
-
 
 public:
 	App() : window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set"), needsUpdate(true) {
-		image.create(WIDTH, HEIGHT, sf::Color::Black);
-		texture.create(WIDTH, HEIGHT);
-		sprite.setTexture(texture);
-
-		for (int i = 0; i < MAX_ITERATIONS; i++) {
-			colorLookupTable[i] = sf::Color(i % 255, (i * 2) % 255, (i * 3) % 255);
+		if (!mandelbrotShader.loadFromFile("C:\\Fractal Renderer\\Fractal Renderer\\mandelbrot.frag", sf::Shader::Fragment)) {
+			std::cerr << "Failed to load shader." << std::endl;
+			exit(-1);
 		}
+		window.setVerticalSyncEnabled(true);
+		window.setFramerateLimit(144);
 	}
 
 	void run() {
 		while (window.isOpen()) {
 			handleEvents();
-
 			renderMandelbrot();
-			
-			if (needsUpdate) {
-				texture.update(image);
-				needsUpdate = false;
-			}
-			
-			window.clear();
-			window.draw(sprite);
 			window.display();
+			needsUpdate = false;
 		}
 	}
 
@@ -107,7 +94,6 @@ private:
 				// Update the Mandelbrot calculations with new zoom factor and set needsUpdate to true
 				int mouseX = sf::Mouse::getPosition(window).x;
 				int mouseY = sf::Mouse::getPosition(window).y;
-				
 				viewport.zoom(mouseX, mouseY, zoomFactor);
 				needsUpdate = true;
 			}
@@ -115,54 +101,17 @@ private:
 	}
 
 	void renderMandelbrot() {
-		if (!needsUpdate) return;
-		
-		double scaleX = (viewport.getXMax() - viewport.getXMin()) / WIDTH;
-		double scaleY = (viewport.getYMax() - viewport.getYMin()) / HEIGHT;
+		mandelbrotShader.setUniform("viewportXMin", static_cast<float>(viewport.getXMin()));
+		mandelbrotShader.setUniform("viewportXMax", static_cast<float>(viewport.getXMax()));
+		mandelbrotShader.setUniform("viewportYMin", static_cast<float>(viewport.getYMin()));
+		mandelbrotShader.setUniform("viewportYMax", static_cast<float>(viewport.getYMax()));
+		mandelbrotShader.setUniform("width", static_cast<float>(WIDTH));
+		mandelbrotShader.setUniform("height", static_cast<float>(HEIGHT));
+		mandelbrotShader.setUniform("maxIterations", 1000);
 
-		bool useSymmetry = (std::abs(viewport.getYMin()) == std::abs(viewport.getYMax()));
-
-		if (useSymmetry) {
-#pragma omp parallel for 
-			for (int y = 0; y < HEIGHT / 2; y++) {
-				for (int x = 0; x < WIDTH; x++) {
-					double x0 = viewport.getXMin() + x * scaleX;
-					double y0 = viewport.getYMin() + y * scaleY;
-
-					double value = Mandelbrot::calculate(x0, y0, 1000);
-
-					int colorValue = static_cast<int>(value);
-
-					sf::Color color(colorValue % 255, (colorValue *2) % 255,(colorValue * 3) % 255);
-
-					if (value == 1000) color = sf::Color::Black;
-
-					image.setPixel(x, y, color);
-					image.setPixel(x, HEIGHT - y - 1, color);
-				}
-			}
-		}
-		else {
-#pragma omp parallel for
-			for (int y = 0; y < HEIGHT; y++) {
-				for (int x = 0; x < WIDTH; x++) {
-					double x0 = viewport.getXMin() + x * scaleX;
-					double y0 = viewport.getYMin() + y * scaleY;
-
-					int value = Mandelbrot::calculate(x0, y0, 1000);
-					
-					int colorValue = static_cast<int>(value);
-
-					sf::Color color(colorValue % 255, (colorValue * 2) % 255, (colorValue * 3) % 255);
-					
-					if (value == 1000) color = sf::Color::Black;
-
-					image.setPixel(x, y, color);
-				}
-			}
-		}
-		texture.update(image);
-		needsUpdate = false;
+		sf::RectangleShape fullscreenQuad(sf::Vector2f(WIDTH, HEIGHT));
+		window.clear();
+		window.draw(fullscreenQuad, &mandelbrotShader);
 	}
 };
 
