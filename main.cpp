@@ -3,8 +3,8 @@
 #include <vector>
 #include <iostream>
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
+const int WIDTH = 2560;
+const int HEIGHT = 1440;
 
 class Mandelbrot {
 public:
@@ -37,17 +37,39 @@ public:
 	Viewport() : xMin(-2.0), xMax(0.47), yMin(-1.12), yMax(1.12) {}
 
 	void zoom(int mouseX, int mouseY, double zoomFactor) {
-		double x = xMin + mouseX * (xMax - xMin) / WIDTH;
-		double y = yMin + mouseY * (yMax - yMin) / HEIGHT;
+		double centerX = (xMax + xMin) * 0.5;
+		double centerY = (yMax + yMin) * 0.5;
 
 		double xRange = (xMax - xMin) * zoomFactor;
 		double yRange = (yMax - yMin) * zoomFactor;
 
-		xMin = x - mouseX * xRange / WIDTH;
-		xMax = xMin + xRange;
-	
-		yMin = y - mouseY * yRange / HEIGHT;
-		yMax = yMin + yRange;
+		xMin = centerX - 0.5 * xRange;
+		xMax = centerX + 0.5 * xRange;
+		yMin = centerY - 0.5 * yRange;
+		yMax = centerY + 0.5 * yRange;
+	}
+
+	void zoomCenter(double zoomFactor) {
+		double centerX = (xMax + xMin) * 0.5;
+		double centerY = (yMax + yMin) * 0.5;
+
+		double xRange = (xMax - xMin) * zoomFactor;
+		double yRange = (yMax - yMin) * zoomFactor;
+
+		xMin = centerX - 0.5 * xRange;
+		xMax = centerX + 0.5 * xRange;
+		yMin = centerY - 0.5 * yRange;
+		yMax = centerY + 0.5 * yRange;
+	}
+
+	void pan(double deltaX, double deltaY) {
+		double xRange = xMax - xMin;
+		double yRange = yMax - yMin;
+
+		xMin += xRange * deltaX;
+		xMax += xRange * deltaX;
+		yMin += yRange * deltaY;
+		yMax += yRange * deltaY;
 	}
 
 	double getXMin() const { return xMin; }
@@ -89,13 +111,41 @@ private:
 			if (event.type == sf::Event::Closed) {
 				window.close();
 			}
-			else if (event.type == sf::Event::MouseWheelScrolled) {
-				double zoomFactor = (event.mouseWheelScroll.delta > 0) ? 0.8 : 1.25;
-				// Update the Mandelbrot calculations with new zoom factor and set needsUpdate to true
-				int mouseX = sf::Mouse::getPosition(window).x;
-				int mouseY = sf::Mouse::getPosition(window).y;
-				viewport.zoom(mouseX, mouseY, zoomFactor);
-				needsUpdate = true;
+			else if (event.type == sf::Event::KeyPressed) {
+				switch (event.key.code) {
+				case sf::Keyboard::W:
+					// Zoom in
+					viewport.zoomCenter(0.8);
+					needsUpdate = true;
+					break;
+				case sf::Keyboard::S:
+					// Zoom out
+					viewport.zoomCenter(1.25);
+					needsUpdate = true;
+					break;
+				case sf::Keyboard::Up:
+					// Pan up
+					viewport.pan(0, -0.05);
+					needsUpdate = true;
+					break;
+				case sf::Keyboard::Down:
+					// Pan down
+					viewport.pan(0, 0.05);
+					needsUpdate = true;
+					break;
+				case sf::Keyboard::Left:
+					// Pan left
+					viewport.pan(-0.05, 0);
+					needsUpdate = true;
+					break;
+				case sf::Keyboard::Right:
+					// Pan right
+					viewport.pan(0.05, 0);
+					needsUpdate = true;
+					break;
+				default:
+					break;
+				}
 			}
 		}
 	}
@@ -107,7 +157,7 @@ private:
 		mandelbrotShader.setUniform("viewportYMax", static_cast<float>(viewport.getYMax()));
 		mandelbrotShader.setUniform("width", static_cast<float>(WIDTH));
 		mandelbrotShader.setUniform("height", static_cast<float>(HEIGHT));
-		mandelbrotShader.setUniform("maxIterations", 1000);
+		mandelbrotShader.setUniform("maxIterations", 10000);
 
 		sf::RectangleShape fullscreenQuad(sf::Vector2f(WIDTH, HEIGHT));
 		window.clear();
