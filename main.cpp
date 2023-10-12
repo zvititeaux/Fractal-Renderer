@@ -1,8 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 
-const int WIDTH = 2560;
-const int HEIGHT = 1440;
+const int WIDTH = 800;
+const int HEIGHT = 600;
 
 class Mandelbrot {
 public:
@@ -20,7 +20,10 @@ public:
 			yy = y * y;
 			iteration++;
 		}
-		return iteration;
+
+		if (iteration == max_iteration) return max_iteration;
+
+		return iteration + 1 - log(log(sqrt(xx + yy))) / log(2.0);
 	}
 };
 
@@ -60,11 +63,19 @@ private:
 	sf::Sprite sprite;
 	bool needsUpdate = true;
 
+	static const int MAX_ITERATIONS = 1000;
+	sf::Color colorLookupTable[MAX_ITERATIONS];
+
+
 public:
 	App() : window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set"), needsUpdate(true) {
 		image.create(WIDTH, HEIGHT, sf::Color::Black);
 		texture.create(WIDTH, HEIGHT);
 		sprite.setTexture(texture);
+
+		for (int i = 0; i < MAX_ITERATIONS; i++) {
+			colorLookupTable[i] = sf::Color(i % 255, (i * 2) % 255, (i * 3) % 255);
+		}
 	}
 
 	void run() {
@@ -118,8 +129,12 @@ private:
 					double x0 = viewport.getXMin() + x * scaleX;
 					double y0 = viewport.getYMin() + y * scaleY;
 
-					int value = Mandelbrot::calculate(x0, y0, 1000);
-					sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
+					double value = Mandelbrot::calculate(x0, y0, 1000);
+
+					int colorValue = static_cast<int>(value);
+
+					sf::Color color(colorValue % 255, (colorValue *2) % 255,(colorValue * 3) % 255);
+
 					if (value == 1000) color = sf::Color::Black;
 
 					image.setPixel(x, y, color);
@@ -135,7 +150,11 @@ private:
 					double y0 = viewport.getYMin() + y * scaleY;
 
 					int value = Mandelbrot::calculate(x0, y0, 1000);
-					sf::Color color(value % 255, (value * 2) % 255, (value * 3) % 255);
+					
+					int colorValue = static_cast<int>(value);
+
+					sf::Color color(colorValue % 255, (colorValue * 2) % 255, (colorValue * 3) % 255);
+					
 					if (value == 1000) color = sf::Color::Black;
 
 					image.setPixel(x, y, color);
