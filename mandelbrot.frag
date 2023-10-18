@@ -1,7 +1,6 @@
 #version 330 core
 
-out vec4 color;
-
+// Uniforms that you set in your C++ code
 uniform float viewportXMin;
 uniform float viewportXMax;
 uniform float viewportYMin;
@@ -9,31 +8,45 @@ uniform float viewportYMax;
 uniform float width;
 uniform float height;
 uniform int maxIterations;
+uniform vec3 ColorScale;
 
-vec3 getColor(int iteration) {
-    if (iteration == maxIterations) {
-        return vec3(0.0, 0.0, 0.0); // black color for points inside the Mandelbrot set
-    } else {
-        float normalized = float(iteration) / float(maxIterations);
-        return vec3(normalized, 0.0, 1.0 - normalized); // Simple gradient (blue to red)
-    }
+out vec4 color;
+
+// Function to map the current pixel to a point in the Mandelbrot set
+vec2 mapToMandelbrot(float x, float y) {
+    float xMapped = mix(viewportXMin, viewportXMax, x / width);
+    float yMapped = mix(viewportYMin, viewportYMax, y / height);
+    return vec2(xMapped, yMapped);
 }
 
 void main() {
-    float x0 = viewportXMin + (gl_FragCoord.x / width) * (viewportXMax - viewportXMin);
-    float y0 = viewportYMin + (gl_FragCoord.y / height) * (viewportYMax - viewportYMin);
+    // Get the coordinates of the current pixel
+    vec2 c = mapToMandelbrot(gl_FragCoord.x, gl_FragCoord.y);
+    vec2 z = vec2(0.0, 0.0);
+    int iterations = 0;
 
-    float x = 0.0;
-    float y = 0.0;
-    int iteration = 0;
+    // Mandelbrot iteration loop
+    for (int i = 0; i < maxIterations; ++i) {
+        float x = (z.x * z.x - z.y * z.y) + c.x;
+        float y = (2.0 * z.x * z.y) + c.y;
 
-    while (x*x + y*y <= 4.0 && iteration < maxIterations) {
-        float tempX = x*x - y*y + x0;
-        y = 2.0 * x * y + y0;
-        x = tempX;
-        iteration++;
+        z = vec2(x, y);
+
+        if (length(z) > 2.0) {
+            break;
+        }
+
+        iterations++;
     }
 
-    vec3 pixelColor = getColor(iteration);
-    color = vec4(pixelColor, 1.0);
+    // Color mapping based on the number of iterations
+    if (iterations == maxIterations) {
+        color = vec4(0.0, 0.0, 0.0, 1.0); // Black for pixels inside the Mandelbrot set
+    } else {
+        // Color mapping for pixels outside the Mandelbrot set
+        float norm = float(iterations) / float(maxIterations);
+        vec3 gradientColor = mix(vec3(0.0, 0.0, 0.8), vec3(1.0, 1.0, 0.0), norm); // Blue to Yellow
+        vec3 finalColor = ColorScale * gradientColor;
+        color = vec4(finalColor, 1.0);
+    }
 }
