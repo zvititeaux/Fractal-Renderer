@@ -1,6 +1,7 @@
 #version 330 core
 
 // Uniforms that you set in your C++ code
+// Uniforms that you set in your C++ code
 uniform float viewportXMin;
 uniform float viewportXMax;
 uniform float viewportYMin;
