@@ -1,7 +1,6 @@
 #version 330 core
 
-out vec4 color;
-
+// Uniforms that you set in your C++ code
 uniform float viewportXMin;
 uniform float viewportXMax;
 uniform float viewportYMin;
@@ -9,31 +8,61 @@ uniform float viewportYMax;
 uniform float width;
 uniform float height;
 uniform int maxIterations;
+uniform vec3 ColorScale;
 
-vec3 getColor(int iteration) {
-    if (iteration == maxIterations) {
-        return vec3(0.0, 0.0, 0.0); // black color for points inside the Mandelbrot set
+out vec4 color;
+
+// Function to map the current pixel to a point in the Mandelbrot set
+vec2 mapToMandelbrot(float x, float y) {
+    float xMapped = mix(viewportXMin, viewportXMax, x / width);
+    float yMapped = mix(viewportYMin, viewportYMax, y / height);
+    return vec2(xMapped, yMapped);
+}
+
+vec3 getGradientColor(float norm) {
+    vec3 gradientColor;
+    if (norm < 0.25) {
+        gradientColor = mix(vec3(0.5, 0.0, 0.1), vec3(1.0, 0.8, 0.0), norm * 4.0);
+    } else if (norm < 0.5) {
+        gradientColor = mix(vec3(1.0, 0.8, 0.0), vec3(1.0, 0.5, 0.0), (norm - 0.25) * 4.0);
+    } else if (norm < 0.75) {
+        gradientColor = mix(vec3(1.0, 0.5, 0.0), vec3(1.0, 0.4, 0.4), (norm - 0.5) * 4.0);
     } else {
-        float normalized = float(iteration) / float(maxIterations);
-        return vec3(normalized, 0.0, 1.0 - normalized); // Simple gradient (blue to red)
+        gradientColor = mix(vec3(1.0, 0.4, 0.4), vec3(0.5, 0.0, 0.1), (norm - 0.75) * 4.0);
     }
+    return gradientColor;
 }
 
 void main() {
-    float x0 = viewportXMin + (gl_FragCoord.x / width) * (viewportXMax - viewportXMin);
-    float y0 = viewportYMin + (gl_FragCoord.y / height) * (viewportYMax - viewportYMin);
+    // Get the coordinates of the current pixel
+    vec2 c = mapToMandelbrot(gl_FragCoord.x, gl_FragCoord.y);
+    vec2 z = vec2(0.0, 0.0);
+    int iterations = 0;
+    float minDistance = 1000.0;
 
-    float x = 0.0;
-    float y = 0.0;
-    int iteration = 0;
+    // Mandelbrot iteration loop
+    for (int i = 0; i < maxIterations; ++i) {
+        float x = (z.x * z.x - z.y * z.y) + c.x;
+        float y = (2.0 * z.x * z.y) + c.y;
 
-    while (x*x + y*y <= 4.0 && iteration < maxIterations) {
-        float tempX = x*x - y*y + x0;
-        y = 2.0 * x * y + y0;
-        x = tempX;
-        iteration++;
+        z = vec2(x, y);
+
+        float dist = length(z);
+        if (dist > 2.0) {
+            break;
+        }
+        
+        // Update the minimum distance for orbit trapping
+        minDistance = min(minDistance, dist);
+
+        iterations++;
     }
 
-    vec3 pixelColor = getColor(iteration);
-    color = vec4(pixelColor, 1.0);
+    if (iterations == maxIterations) {
+        color = vec4(0.0, 0.0, 0.0, 1.0); // Green for pixels inside the Mandelbrot set
+    } else {
+        float norm = (float(iterations) + 1.0 - log(log(minDistance + 2.0))) / float(maxIterations);
+        vec3 gradientColor = getGradientColor(norm);
+        color = vec4(gradientColor, 1.0); 
+    }
 }
