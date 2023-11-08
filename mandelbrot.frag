@@ -9,7 +9,7 @@ uniform float viewportYMax;
 uniform float width;
 uniform float height;
 uniform int maxIterations;
-uniform vec3 ColorScale;
+uniform vec3 colorScale;
 
 out vec4 color;
 
@@ -31,6 +31,8 @@ vec3 getGradientColor(float norm) {
     } else {
         gradientColor = mix(vec3(1.0, 0.4, 0.4), vec3(0.5, 0.0, 0.1), (norm - 0.75) * 4.0);
     }
+    gradientColor *= colorScale; 
+    
     return gradientColor;
 }
 
